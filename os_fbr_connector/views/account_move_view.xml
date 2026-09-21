@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_fbr_inherit" model="ir.ui.view">
+        <field name="name">account.move.form.fbr.inherit</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Buttons to the header -->
+            <xpath expr="//header" position="inside">
+                
+                <button name="action_post_invoice_to_fbr_sandbox"
+                        string="Post to FBR (Sandbox)"
+                        type="object"
+                        class="oe_highlight"
+                        groups="os_fbr_connector.group_fbr_user"
+                        data-hotkey="g"
+                        invisible="state != 'posted' or move_type not in ('out_invoice','out_refund')"
+                        />
+
+                <button name="action_validate_invoice_fbr_sandbox"
+                        string="Validate with FBR (Sandbox)"
+                        type="object"
+                        class="oe_highlight"
+                         groups="os_fbr_connector.group_fbr_user"
+                        data-hotkey="v"
+                        invisible="state != 'posted' or move_type not in ('out_invoice','out_refund')"
+                        />
+                <button name="action_post_invoice_to_fbr_production"
+                        string="Post to FBR (Production)"
+                        type="object"
+                        class="oe_highlight"
+                         groups="os_fbr_connector.group_fbr_user"
+                        data-hotkey="p"
+                        invisible="state != 'posted' or move_type not in ('out_invoice','out_refund') or fbr_production_status == 'sent'"
+                      />
+                <button name="action_download_fbr_invoice" type="object" string="FBR Invoice Print" class="oe_highlight"  invisible="state != 'posted' or move_type not in ('out_invoice','out_refund')"/>
+            </xpath>
+
+            <!-- Hide "Reset to Draft" button when invoice is successfully posted to FBR Production -->
+            <xpath expr="//button[@name='button_draft']" position="attributes">
+                <attribute name="invisible" add="fbr_production_status == 'sent'" separator=" or "/>
+            </xpath>
+
+             <xpath expr="//field[@name='invoice_date']" position="after">
+                <field name="fbr_scenario_id" options="{'no_create': True, 'no_create_edit': True}"/>
+            </xpath>
+
+
+
+             <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='product_id']" position="after">
+             <field name="fbr_hs_code" force_save="1" column_invisible="parent.move_type not in ['out_invoice', 'out_refund']" optional="show" readonly="1"/>
+                    <field name="fbr_scenario_id" column_invisible="parent.move_type not in ['out_invoice', 'out_refund']" options="{'no_open': True, 'no_create': True, 'no_create_edit':True}"  optional="hide"/>
+                    <field name="fbr_sro_item_serial_no_id" column_invisible="parent.move_type not in ['out_invoice', 'out_refund']" options="{'no_open': True, 'no_create': True, 'no_create_edit':True}"  optional="hide"/>
+                    <field name="fbr_sro_schedule_no_id" column_invisible="parent.move_type not in ['out_invoice', 'out_refund']" options="{'no_open': True, 'no_create': True, 'no_create_edit':True}"  optional="hide"/>
+                     <field name="fed_payable" column_invisible="parent.move_type not in ['out_invoice', 'out_refund']" optional="hide"/>
+
+                    
+                  
+                </xpath>
+
+                <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='quantity']" position="after">
+
+
+                
+                <field name="fbr_uom_id" column_invisible="parent.move_type not in ['out_invoice', 'out_refund']" optional="show" options="{'no_open': True, 'no_create': True, 'no_create_edit':True}"/>
+                   
+                    <field name="fix_notified_val_retail_price" column_invisible="parent.move_type not in ['out_invoice', 'out_refund']" optional="show"/>
+                    <field name="fbr_conversion_qty" column_invisible="parent.move_type not in ['out_invoice', 'out_refund']" optional="show" readonly="1"/>
+                </xpath>
+
+             
+            <!-- Add new notebook page for FBR Info -->
+            <xpath expr="//notebook" position="inside">
+                <page string="FBR Info" name="fbr_info"  groups="os_fbr_connector.group_fbr_user" invisible="move_type != 'out_invoice' and move_type != 'out_refund'">
+                    <group>
+                        <group>
+
+                        <field name="fbr_sandbox_post_status" widget="badge"
+                                decoration-success="fbr_sandbox_post_status == 'posted'"
+                                decoration-warning="fbr_sandbox_post_status == 'in_queue'"
+                                decoration-danger="fbr_sandbox_post_status == 'failed'"/>
+
+                                
+                            <field name="fbr_sandbox_validation_status" widget="badge"
+                                decoration-success="fbr_sandbox_validation_status == 'valid'"
+                                decoration-warning="fbr_sandbox_validation_status == 'in_queue'"
+                                decoration-danger="fbr_sandbox_validation_status == 'invalid'"/>
+                                
+                                <field name="fbr_production_status" widget="badge"
+                                decoration-success="fbr_production_status == 'sent'"
+                                decoration-warning="fbr_production_status == 'in_queue'"
+                                decoration-danger="fbr_production_status == 'failed'"/>
+                        </group>
+                        <group>
+
+                        
+                         <field name="fbr_posted_invoice_number_id" options="{'no_open': True, 'no_create': True, 'no_create_edit':True}" invisible="move_type in ['out_invoice',]" />
+                            <field name="fbr_invoice_number" readonly="move_type in ['out_invoice',]" />
+                            <field name="qr_code_image" widget="image" options="{'size': [200, 200]}" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Last FBR Response">
+                        <field name="fbr_response" nolabel="1" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+
+
+
+
+    <record model="ir.actions.server" id="action_post_invoice_to_fbr_sandbox">
+        <field name="name">Post to FBR (Sandbox)</field>
+        <field name="groups_id" eval="[(4, ref('os_fbr_connector.group_fbr_user'))]"/>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move" />
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            if records:
+                action = records.with_context(fbr_bulk_mode=True).action_post_invoice_to_fbr_sandbox()
+        </field>
+    </record>
+
+    <record model="ir.actions.server" id="action_validate_invoice_fbr_sandbox">
+        <field name="name">Validate with FBR (Sandbox)</field>
+        <field name="groups_id" eval="[(4, ref('os_fbr_connector.group_fbr_user'))]"/>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move" />
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            if records:
+                action = records.with_context(fbr_bulk_mode=True).action_validate_invoice_fbr_sandbox()
+        </field>
+    </record>
+
+    <record model="ir.actions.server" id="action_post_invoice_to_fbr_production">
+        <field name="name">Post to FBR (Production)</field>
+        <field name="groups_id" eval="[(4, ref('os_fbr_connector.group_fbr_user'))]"/>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move" />
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            if records:
+                action = records.with_context(fbr_bulk_mode=True).action_post_invoice_to_fbr_production()
+        </field>
+    </record>
+    <!-- ================================================================
+         LIST VIEW: Add FBR status columns to the invoice list/tree view
+         ================================================================ -->
+    <record id="view_move_list_fbr_inherit" model="ir.ui.view">
+        <field name="name">account.move.list.fbr.inherit</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <!-- Customer's Reference (res.partner.ref) right after the Customer column -->
+            <xpath expr="//list/field[@name='invoice_partner_display_name'][2]" position="after">
+                <field name="partner_ref" string="Reference" optional="show"/>
+            </xpath>
+            <xpath expr="//list" position="inside">
+                <field name="fbr_sandbox_validation_status"
+                       widget="badge"
+                       decoration-success="fbr_sandbox_validation_status == 'valid'"
+                       decoration-warning="fbr_sandbox_validation_status == 'in_queue'"
+                       decoration-danger="fbr_sandbox_validation_status == 'invalid'"
+                       decoration-muted="fbr_sandbox_validation_status == 'not_validated'"
+                       string="FBR Validation"
+                       optional="show"
+                       groups="os_fbr_connector.group_fbr_user"/>
+
+                <field name="fbr_sandbox_post_status"
+                       widget="badge"
+                       decoration-success="fbr_sandbox_post_status == 'posted'"
+                       decoration-warning="fbr_sandbox_post_status == 'in_queue'"
+                       decoration-danger="fbr_sandbox_post_status == 'failed'"
+                       decoration-muted="fbr_sandbox_post_status == 'not_posted'"
+                       string="FBR Sandbox Post"
+                       optional="show"
+                       groups="os_fbr_connector.group_fbr_user"/>
+
+                <field name="fbr_production_status"
+                       widget="badge"
+                       decoration-success="fbr_production_status == 'sent'"
+                       decoration-warning="fbr_production_status == 'in_queue'"
+                       decoration-danger="fbr_production_status == 'failed'"
+                       decoration-muted="fbr_production_status == 'not_sent'"
+                       string="FBR Production"
+                       optional="show"
+                       groups="os_fbr_connector.group_fbr_user"/>
+
+                <field name="fbr_invoice_number"
+                       string="FBR Invoice #"
+                       optional="show"
+                       groups="os_fbr_connector.group_fbr_user"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

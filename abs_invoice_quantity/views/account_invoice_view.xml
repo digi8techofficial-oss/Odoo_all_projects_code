@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_customer_invoice_total_product_form" model="ir.ui.view">
+        <field name="name">account.move.form</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_line_ids']" position="after">
+                <group>
+                    <field name="total_product"></field>
+                    <field name="total_quantity"></field>
+                    <field name="total_discount_fixed"></field>
+                    <field name="total_amount_before_discount"></field>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

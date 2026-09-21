@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <data>
+        <record id="account_invoices_product_quantities" model="ir.actions.report">
+            <field name="name">Invoices with products and Quantity</field>
+            <field name="model">account.move</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">account.report_invoice</field>
+            <field name="report_file">account.report_invoice</field>
+            <field name="print_report_name">"Invoices with products and Quantity"</field>
+            <field name="attachment"/>
+            <field name="attachment_use" eval="False"/>
+            <field name="binding_model_id" ref="model_account_move"/>
+            <field name="binding_type">report</field>
+        </record>
+        
+    </data>
+</odoo>
+
